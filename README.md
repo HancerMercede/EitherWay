@@ -147,55 +147,484 @@ var result = from a in EitherAsync.Right(3)
 | `EitherAsync<L, R>` | Lazy async wrapper. Composes fluently, runs on await. |
 | `Unit` | Void type for command operations (create, update, delete). |
 
+---
+
 ### Factories
 
+#### `Either.Ok(value)`
+
+Creates a successful `Either<string, T>`. The error type defaults to `string`.
+
 ```csharp
-Either.Ok(value)                          // Either<string, T> — Right
-Either.Fail<T>("error")                   // Either<string, T> — Left
-EitherAsync.Right(value)                  // EitherAsync<string, T>
-EitherAsync.Left<T>("error")              // EitherAsync<string, T>
-Either<L,R>.ToRight(value)                // Explicit type
-Either<L,R>.ToLeft(error)                 // Explicit type
-EitherAsync<L,R>.FromRight(value)         // Explicit async
-EitherAsync<L,R>.FromLeft(error)          // Explicit async
-EitherAsync<L,R>.Try(action, onError)     // Static try-catch wrapper
+Either<string, Company> result = Either.Ok(company);
 ```
 
-### Extensions on Either
+#### `Either.Fail<T>(error)`
 
-| Method | Returns | What it does |
-|---|---|---|
-| `.Map(fn)` | `Either<L, T>` | Transform the Right value |
-| `.FlatMap(fn)` | `Either<L, T>` | Chain an operation that returns Either |
-| `.Ensure(pred, error)` | `Either<L, R>` | Guard clause — Left if predicate fails |
-| `.Ensure(pred, errorFn)` | `Either<L, R>` | Guard clause with lazy error factory |
-| `.MapLeft(fn)` | `Either<L2, R>` | Transform the Left value |
-| `.BiMap(lFn, rFn)` | `Either<L2, R2>` | Transform both sides |
-| `.Tap(action)` | `Either<L, R>` | Side effect on Right, value unchanged |
-| `.Match(onLeft, onRight)` | `T` | Resolve the Either into a single value |
+Creates a failed `Either<string, T>` with an error message.
 
-### Extensions on EitherAsync
+```csharp
+Either<string, int> result = Either.Fail<int>("invalid operation");
+```
 
-| Method | Returns | What it does |
-|---|---|---|
-| `.Map(fn)` | `EitherAsync<L, T>` | Transform Right |
-| `.FlatMap(fn)` | `EitherAsync<L, T>` | Chain async operation |
-| `.Ensure(pred, error)` | `EitherAsync<L, R>` | Guard clause |
-| `.Try(action, onError)` | `EitherAsync<L, T>` | Catch exceptions, receives Right value |
-| `.Tap(action)` | `EitherAsync<L, R>` | Side effect |
-| `.MapLeft(fn)` | `EitherAsync<L2, R>` | Transform Left |
-| `.MatchAsync(onLeft, onRight)` | `Task<T>` | Resolve async Either |
+#### `EitherAsync.Right(value)`
+
+Creates a lazy async `EitherAsync<string, T>` in the success track.
+
+```csharp
+EitherAsync<string, Company> op = EitherAsync.Right(company);
+```
+
+#### `EitherAsync.Left<T>(error)`
+
+Creates a lazy async `EitherAsync<string, T>` in the error track.
+
+```csharp
+EitherAsync<string, int> op = EitherAsync.Left<int>("not found");
+```
+
+#### `Either<L, R>.ToRight(value)`
+
+Creates a successful `Either<L, R>` with explicit types. Use when your error type is not `string`.
+
+```csharp
+Either<ErrorCode, int> result = Either<ErrorCode, int>.ToRight(42);
+```
+
+#### `Either<L, R>.ToLeft(error)`
+
+Creates a failed `Either<L, R>` with explicit types.
+
+```csharp
+Either<ErrorCode, int> result = Either<ErrorCode, int>.ToLeft(ErrorCode.NotFound);
+```
+
+#### `EitherAsync<L, R>.FromRight(value)`
+
+Creates a lazy async `EitherAsync<L, R>` in the success track with explicit types.
+
+```csharp
+EitherAsync<ErrorCode, int> op = EitherAsync<ErrorCode, int>.FromRight(42);
+```
+
+#### `EitherAsync<L, R>.FromLeft(error)`
+
+Creates a lazy async `EitherAsync<L, R>` in the error track with explicit types.
+
+```csharp
+EitherAsync<ErrorCode, int> op = EitherAsync<ErrorCode, int>.FromLeft(ErrorCode.NotFound);
+```
+
+#### `EitherAsync<L, R>.Try(action, onError)`
+
+Safely executes an async operation. If it throws, the exception is caught and transformed into a Left value via `onError`. This is a static factory — use it to start a pipeline from a risky operation.
+
+```csharp
+var op = EitherAsync<string, int>.Try(
+    () => httpClient.GetAsync("https://api.example.com/data"),
+    ex => $"Request failed: {ex.Message}"
+);
+```
+
+---
+
+### Extensions on `Either`
+
+#### `.Map(fn)`
+
+Transforms the Right value with a synchronous function. If the state is Left, the function is skipped and the Left passes through unchanged.
+
+```csharp
+Either<string, int> ok = Either.Ok(21);
+var doubled = ok.Map(x => x * 2);
+// → Right(42)
+
+Either<string, int> fail = Either.Fail<int>("error");
+var doubled = fail.Map(x => x * 2);
+// → Left("error") — unchanged
+```
+
+#### `.FlatMap(fn)`
+
+Chains a function that returns a new `Either`. Use this when the next operation can also fail. If the current state is Left, the function is skipped.
+
+```csharp
+Either<string, int> ok = Either.Ok(10);
+var chained = ok.FlatMap(x =>
+    x > 5
+        ? Either<string, string>.ToRight($"big: {x}")
+        : Either<string, string>.ToLeft("too small")
+);
+// → Right("big: 10")
+```
+
+#### `.Ensure(predicate, error)`
+
+Guard clause. If the Right value satisfies the predicate, it passes through. If not, the pipeline switches to Left with the given error. If the state is already Left, the predicate is skipped.
+
+```csharp
+Either<string, int> ok = Either.Ok(-5);
+var result = ok.Ensure(x => x > 0, "must be positive");
+// → Left("must be positive")
+```
+
+#### `.Ensure(predicate, errorFactory)`
+
+Same as Ensure but the error is lazily created from the Right value. Use this when the error message depends on the value.
+
+```csharp
+Either<string, int> ok = Either.Ok(-5);
+var result = ok.Ensure(x => x > 0, x => $"value {x} is invalid");
+// → Left("value -5 is invalid")
+```
+
+#### `.MapLeft(fn)`
+
+Transforms the Left value while leaving the Right unchanged. Useful when you need to convert error types at layer boundaries.
+
+```csharp
+Either<int, string> either = Either<int, string>.ToLeft(404);
+var result = either.MapLeft(code => $"HTTP {code}");
+// → Left("HTTP 404")
+```
+
+#### `.BiMap(leftFn, rightFn)`
+
+Transforms both Left and Right values simultaneously. You provide one function for each side.
+
+```csharp
+Either<int, string> right = Either<int, string>.ToRight("hello");
+var r1 = right.BiMap(
+    code => $"err:{code}",
+    text => text.Length
+);
+// → Right(5)
+
+Either<int, string> left = Either<int, string>.ToLeft(42);
+var l1 = left.BiMap(
+    code => $"err:{code}",
+    text => text.Length
+);
+// → Left("err:42")
+```
+
+#### `.Tap(action)`
+
+Executes a side-effect action if the state is Right. The Either value is returned unchanged. Use this for logging, metrics, or caching without breaking the chain.
+
+```csharp
+Either<string, int> ok = Either.Ok(42);
+ok.Tap(x => Console.WriteLine($"Processing {x}"));
+// → Still Right(42), side effect executed
+```
+
+#### `.Match(onLeft, onRight)`
+
+Resolves the Either into a single value by providing handlers for both cases. This is the **only way** to extract the value. The compiler forces you to handle both paths.
+
+```csharp
+Either<string, int> either = Either.Ok(42);
+
+// Returns a string regardless of Left or Right
+var message = either.Match(
+    left => $"Error: {left}",
+    right => $"Value: {right}"
+);
+// → "Value: 42"
+
+// In a controller — maps to different HTTP responses
+return either.Match<IActionResult>(
+    left => BadRequest(new { error = left }),
+    right => Ok(right)
+);
+```
+
+---
+
+### Extensions on `EitherAsync`
+
+#### `.Map(fn)`
+
+Transforms the Right value with a synchronous function. If the pipeline is in the Left state, the function is skipped.
+
+```csharp
+var asyncOp = EitherAsync.Right(21);
+var result = await asyncOp.Map(x => x * 2).Run();
+// → Right(42)
+```
+
+#### `.FlatMap(fn)`
+
+Chains an async operation that returns a new `Either`. Accepts both sync and async functions.
+
+```csharp
+// Async
+var result = await asyncOp
+    .FlatMap(x => Task.FromResult(Either<string, string>.ToRight($"value: {x}")))
+    .Run();
+
+// Sync (the library provides the overload)
+var result = await asyncOp
+    .FlatMap(x => Either<string, string>.ToRight($"value: {x}"))
+    .Run();
+```
+
+#### `.Ensure(predicate, error)`
+
+Guard clause for async pipelines. If the predicate fails, the pipeline switches to Left.
+
+```csharp
+var result = await EitherAsync.Right(-5)
+    .Ensure(x => x > 0, "must be positive")
+    .Run();
+// → Left("must be positive")
+```
+
+#### `.Ensure(predicate, errorFactory)`
+
+Guard clause with a lazy error factory that receives the Right value.
+
+```csharp
+var result = await EitherAsync.Right(-5)
+    .Ensure(x => x > 0, x => $"value {x} is invalid")
+    .Run();
+// → Left("value -5 is invalid")
+```
+
+#### `.Try(action, onError)`
+
+Safely executes an async operation as part of a pipeline. The action receives the Right value from the previous step. If it throws, the exception is caught and mapped to a Left. Use `_` as the parameter name when you don't need the incoming value.
+
+```csharp
+// Receives the previous value
+var result = await EitherAsync.Right(companyId)
+    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+    .Run();
+
+// Ignores the previous value
+var result = await EitherAsync.Right(company)
+    .Try(async _ => {
+        var db = await _repo.CreateRecord(company);
+        await _repo.Save();
+        return db;
+    }, ex => ex.Message)
+    .Run();
+```
+
+#### `.Try(action, onError)` (overload without input)
+
+Same as above but the action doesn't receive the previous value.
+
+```csharp
+var result = await EitherAsync.Right("ignored")
+    .Try(async () => await _repo.GetCount(), ex => ex.Message)
+    .Run();
+```
+
+#### `.MapLeft(fn)`
+
+Transforms the Left value in an async pipeline.
+
+```csharp
+var result = await EitherAsync.Left<int>(404)
+    .MapLeft(code => $"HTTP {code}")
+    .Run();
+// → Left("HTTP 404")
+```
+
+#### `.BiMap(leftFn, rightFn)`
+
+Transforms both Left and Right in an async pipeline.
+
+```csharp
+var result = await EitherAsync.Right(21)
+    .BiMap(
+        error => $"err: {error}",
+        value => value * 2
+    )
+    .Run();
+// → Right(42)
+```
+
+#### `.Tap(action)`
+
+Executes a side-effect on the Right value without transforming it.
+
+```csharp
+await EitherAsync.Right(42)
+    .Tap(x => Console.WriteLine($"Processing {x}"))
+    .Run();
+// Still Right(42), side effect executed
+```
+
+#### `.MatchAsync(onLeft, onRight)`
+
+Resolves an `EitherAsync` by running the pipeline and matching the result. Available with sync or async handlers.
+
+```csharp
+// Sync handlers
+var message = await asyncOp.MatchAsync(
+    error => $"Error: {error}",
+    value => $"Value: {value}"
+);
+
+// Async handlers
+var httpResult = await asyncOp.MatchAsync(
+    async error => {
+        await _logger.LogErrorAsync(error);
+        return StatusCode(500, new { error });
+    },
+    value => Ok(value)  // sync is fine too
+);
+```
+
+#### `.Run()`
+
+Executes the lazy async pipeline and returns the raw `Either<L, R>`. Use this when you want to pass the result to another function or use Match directly.
+
+```csharp
+var either = await asyncOp.Run();
+// either is Either<string, Company> — call Match on it
+```
+
+---
+
+### LINQ extensions
+
+#### `Select` / `SelectMany`
+
+Enables C# query comprehension syntax (`from...select`). Works on both `Either` and `EitherAsync`.
+
+```csharp
+// Synchronous
+var result = from a in Either<string, int>.ToRight(3)
+             from b in Either<string, int>.ToRight(4)
+             select a * b;
+// → Right(12)
+
+// Asynchronous
+var result = await (from a in EitherAsync.Right(3)
+                    from b in EitherAsync.Right(4)
+                    select a * b).Run();
+// → Right(12)
+
+// Short-circuit on failure
+var result = from a in Either<string, int>.ToRight(3)
+             from b in Either<string, int>.ToLeft("fail")
+             select a * b;
+// → Left("fail") — second from fails, select is skipped
+```
+
+#### `Where`
+
+Filters the Right value. If the predicate fails, the Either switches to Left with the provided error.
+
+```csharp
+var result = from x in Either<string, int>.ToRight(5)
+             where x > 10  // needs explicit error
+             select x;
+```
+
+Note: `Where` on Either/EitherAsync requires an explicit error value (unlike LINQ to Objects) because there's no default error to use when the predicate fails.
+
+```csharp
+var result = from x in Either<string, int>.ToRight(5)
+             where x > 10 select "too small"
+             select x;
+```
+
+---
 
 ### Controller extensions (EitherWay.Http)
 
-| Method | HTTP Result | Use case |
-|---|---|---|
-| `result.HandleResult<T>()` | `ActionResult<T>` | GET with data |
-| `result.HandleResult()` | `IActionResult` | With Unit → 204 No Content |
-| `result.HandleCreated(route, fn)` | `ActionResult<T>` | POST → 201 Created |
-| `asyncOp.HandleResultAsync<T>()` | `Task<ActionResult<T>>` | Async GET |
-| `asyncOp.HandleResultAsync()` | `Task<IActionResult>` | Async command → 204 |
-| `asyncOp.HandleCreatedAsync(...)` | `Task<ActionResult<T>>` | Async POST → 201 |
+#### `HandleResult<T>()`
+
+Maps an `Either<string, T>` to `ActionResult<T>`. Right → 200 OK with the value. Left → 400 BadRequest or 404 NotFound depending on the error message content.
+
+```csharp
+[HttpGet("{id}")]
+public ActionResult<Company> Get(int id)
+    => _service.GetCompany(id).HandleResult();
+```
+
+#### `HandleResult()` (for Unit)
+
+Maps an `Either<string, Unit>` to `IActionResult`. Right → 204 No Content. Left → error response.
+
+```csharp
+[HttpDelete("{id}")]
+public IActionResult Delete(int id)
+    => _service.DeleteCompany(id).HandleResult();
+```
+
+#### `HandleCreated(routeName, idSelector)`
+
+Maps a successful creation to 201 Created with a Location header. The `idSelector` extracts route values for the `CreatedAtRoute` result.
+
+```csharp
+[HttpPost]
+public ActionResult<Company> Create(Company company)
+{
+    return _service.CreateCompany(company).HandleCreated(
+        routeName: "GetCompany",          // the named route for retrieval
+        idSelector: c => c.Id             // "{id}" in the route
+    );
+}
+
+// For routes with multiple parameters:
+return service.Create(order).HandleCreated(
+    routeName: "GetOrderItem",
+    idSelector: o => new { orderId = o.OrderId, itemId = o.ItemId }
+);
+```
+
+#### `HandleResultAsync<T>()`
+
+Async version of `HandleResult<T>()`. Calls `Run()` internally and maps the result.
+
+```csharp
+[HttpGet("{id}")]
+public async Task<ActionResult<Company>> Get(int id)
+    => await _service.GetCompanyAsync(id).HandleResultAsync();
+```
+
+#### `HandleResultAsync()` (for Unit)
+
+Async version for Unit results.
+
+```csharp
+[HttpDelete("{id}")]
+public async Task<IActionResult> Delete(int id)
+    => await _service.DeleteCompanyAsync(id).HandleResultAsync();
+```
+
+#### `HandleCreatedAsync(routeName, idSelector)`
+
+Async version of `HandleCreated`.
+
+```csharp
+[HttpPost]
+public async Task<ActionResult<Company>> Create(Company company)
+    => await _service.CreateCompanyAsync(company)
+        .HandleCreatedAsync("GetCompany", c => c.Id);
+```
+
+#### Error mapping logic
+
+The library automatically maps error messages to HTTP status codes:
+
+| Error contains | HTTP Status |
+|---|---|
+| `"not found"` or `"not exist"` | 404 NotFound |
+| Everything else | 400 BadRequest |
+
+```json
+// 400 BadRequest
+{ "message": "Name is required" }
+
+// 404 NotFound
+{ "message": "Company not found" }
+```
 
 ---
 
