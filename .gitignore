@@ -5,3 +5,5 @@ obj/
 .vs/
 _ReSharper.Caches/
 *.DotSettings.user
+".idea/"  
+"**/.idea/" 
