@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace EitherWay.Http;
+namespace EitherWay;
 
 /// <summary>
 /// Maps <see cref="Either{String,R}"/> results to standard ASP.NET Core HTTP responses.

@@ -6,8 +6,9 @@ EitherWay is a functional error-handling library for C# that eliminates try-catc
 
 ```
 dotnet add package EitherWay
-dotnet add package EitherWay.Http    (for ASP.NET Core)
 ```
+
+Includes ASP.NET Core controller extensions (`HandleResult`, `HandleCreated`, async overloads) — no extra package needed.
 
 ---
 
@@ -58,8 +59,7 @@ EitherWay/              ← Core library (no dependencies)
 ├── LINQ support        ← Select / SelectMany (from...select syntax)
 └── Factories           ← Either.Ok, Either.Fail, EitherAsync.Right, EitherAsync.Left
 
-EitherWay.Http/         ← ASP.NET Core integration
-└── ControllerExtensions ← HandleResult, HandleCreated (sync + async)
+ControllerExtensions  ← HandleResult, HandleCreated (sync + async) — built-in
 ```
 
 ---
@@ -535,7 +535,7 @@ var result = from x in Either<string, int>.ToRight(5)
 
 ---
 
-### Controller extensions (EitherWay.Http)
+### Controller extensions (built-in)
 
 #### `HandleResult<T>()`
 
@@ -632,8 +632,6 @@ The library automatically maps error messages to HTTP status codes:
 
 - .NET 10+
 - C# 14+
-- EitherWay.Http requires `Microsoft.AspNetCore.App` framework reference
-
 ## License
 
 MIT
