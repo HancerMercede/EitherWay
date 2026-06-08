@@ -1,0 +1,196 @@
+@page {
+  margin: 2.5cm 2cm 2.5cm 2cm;
+  size: A4;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 100%;
+}
+
+/* Cover page */
+h1:first-of-type {
+  text-align: center;
+  font-size: 28pt;
+  margin-top: 4cm;
+  margin-bottom: 0.3cm;
+  color: #0d47a1;
+  letter-spacing: 1px;
+}
+
+h1:first-of-type + p {
+  text-align: center;
+  font-size: 14pt;
+  color: #555;
+  margin-bottom: 2cm;
+}
+
+h1:first-of-type + p + hr {
+  display: none;
+}
+
+h1:first-of-type + p + hr + p {
+  text-align: center;
+  font-size: 11pt;
+  color: #888;
+  margin-top: -1cm;
+}
+
+/* Headings */
+h1 {
+  font-size: 20pt;
+  color: #0d47a1;
+  border-bottom: 2px solid #0d47a1;
+  padding-bottom: 4px;
+  margin-top: 1.5cm;
+  page-break-before: always;
+}
+
+h2 {
+  font-size: 16pt;
+  color: #1565c0;
+  margin-top: 1cm;
+  margin-bottom: 0.3cm;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 13pt;
+  color: #1976d2;
+  margin-top: 0.7cm;
+  margin-bottom: 0.2cm;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 11pt;
+  color: #1e88e5;
+  margin-top: 0.5cm;
+  margin-bottom: 0.1cm;
+  page-break-after: avoid;
+}
+
+/* Code blocks */
+code {
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 9.5pt;
+}
+
+pre {
+  background-color: #f5f7fa;
+  border: 1px solid #e0e3e8;
+  border-left: 4px solid #1565c0;
+  border-radius: 4px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 9pt;
+}
+
+p code, li code {
+  background-color: #eef2f8;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9.5pt;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8cm 0;
+  page-break-inside: avoid;
+  font-size: 10pt;
+}
+
+th {
+  background-color: #1565c0;
+  color: white;
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #e0e3e8;
+}
+
+tr:nth-child(even) td {
+  background-color: #f8f9fb;
+}
+
+/* Blockquotes - for tips/warnings */
+blockquote {
+  border-left: 4px solid #ffa726;
+  background: #fff8e1;
+  padding: 10px 16px;
+  margin: 0.5cm 0;
+  page-break-inside: avoid;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+blockquote:has(strong:contains("⚠")) {
+  border-left-color: #e53935;
+  background: #ffebee;
+}
+
+blockquote:has(strong:contains("💡")) {
+  border-left-color: #43a047;
+  background: #e8f5e9;
+}
+
+/* Lists */
+ul, ol {
+  margin: 0.3cm 0;
+  padding-left: 1.2cm;
+}
+
+li {
+  margin-bottom: 4px;
+}
+
+/* Horizontal rule */
+hr {
+  border: none;
+  height: 1px;
+  background: #e0e3e8;
+  margin: 0.6cm 0;
+}
+
+/* Links */
+a {
+  color: #1565c0;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Strong emphasis */
+strong {
+  color: #0d47a1;
+}
+
+/* Captions for the cover */
+h1:first-of-type + p + hr + p {
+  margin-top: 0;
+}
+
+/* Avoid page breaks in bad places */
+h2 + p, h3 + p, h2 + pre, h3 + pre {
+  page-break-before: avoid;
+}
