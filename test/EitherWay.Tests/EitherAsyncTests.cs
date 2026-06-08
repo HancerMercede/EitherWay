@@ -252,4 +252,59 @@ public class EitherAsyncTests
         Assert.True(result is Either<string, int>.Left);
         Assert.Equal("boom", result.Match(x => x, _ => ""));
     }
+
+    // ── EitherAsync.Try (static, no handler) ─────────────────
+
+    [Fact]
+    public async Task StaticTry_NoHandler_Success_ReturnsRight()
+    {
+        var asyncEither = EitherAsync.Try(() => Task.FromResult(42));
+
+        var result = await asyncEither.Run();
+
+        Assert.True(result is Either<Exception, int>.Right);
+        Assert.Equal(42, result.Match(_ => 0, x => x));
+    }
+
+    [Fact]
+    public async Task StaticTry_NoHandler_Exception_ReturnsLeft()
+    {
+        var asyncEither = EitherAsync.Try<int>(() =>
+            throw new InvalidOperationException("boom"));
+
+        var result = await asyncEither.Run();
+
+        Assert.True(result is Either<Exception, int>.Left);
+        var ex = result.Match(x => x, _ => null!);
+        Assert.IsType<InvalidOperationException>(ex);
+        Assert.Equal("boom", ex.Message);
+    }
+
+    // ── Ensure with Func<L> (no parameter) ────────────────────
+
+    [Fact]
+    public async Task Ensure_WithFuncErrorFactory_NoParam_ReturnsLeft()
+    {
+        var asyncEither = EitherAsync.Right(-1);
+
+        var result = await asyncEither
+            .Ensure(x => x > 0, () => "must be positive")
+            .Run();
+
+        Assert.True(result is Either<string, int>.Left);
+        Assert.Equal("must be positive", result.Match(x => x, _ => ""));
+    }
+
+    [Fact]
+    public async Task Ensure_WithFuncErrorFactory_NoParam_LeftUnchanged()
+    {
+        var asyncEither = EitherAsync.Left<int>("pre-existing");
+
+        var result = await asyncEither
+            .Ensure(x => x > 0, () => "never used")
+            .Run();
+
+        Assert.True(result is Either<string, int>.Left);
+        Assert.Equal("pre-existing", result.Match(x => x, _ => ""));
+    }
 }

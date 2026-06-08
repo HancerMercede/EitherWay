@@ -47,6 +47,7 @@ public record EitherAsync<L, R>(Func<Task<Either<L, R>>> Run)
 
     /// <summary>
     /// Safely executes an asynchronous task, catching exceptions into a Left value.
+    /// You control how the exception is mapped to your error type.
     /// </summary>
     public static EitherAsync<L, R> Try(Func<Task<R>> action, Func<Exception, L> errorHandler)
     {
@@ -60,6 +61,46 @@ public record EitherAsync<L, R>(Func<Task<Either<L, R>>> Run)
             catch (Exception ex)
             {
                 return Either<L, R>.ToLeft(errorHandler(ex));
+            }
+        });
+    }
+
+    /// <summary>
+    /// Safely executes an asynchronous task, catching exceptions into <c>EitherAsync&lt;Exception, T&gt;</c>.
+    /// The raw exception becomes the Left value. Use <c>MapLeft</c> to project it to your error type.
+    /// </summary>
+    public static EitherAsync<Exception, T> Try<T>(Func<Task<T>> action)
+    {
+        return new EitherAsync<Exception, T>(async () =>
+        {
+            try
+            {
+                var result = await action();
+                return Either<Exception, T>.ToRight(result);
+            }
+            catch (Exception ex)
+            {
+                return Either<Exception, T>.ToLeft(ex);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Safely executes an asynchronous task, catching exceptions into a Left value.
+    /// The error is used directly if an exception occurs — you don't need a handler.
+    /// </summary>
+    public static EitherAsync<L, R> Try<L, R>(Func<Task<R>> action, L error)
+    {
+        return new EitherAsync<L, R>(async () =>
+        {
+            try
+            {
+                var result = await action();
+                return Either<L, R>.ToRight(result);
+            }
+            catch
+            {
+                return Either<L, R>.ToLeft(error);
             }
         });
     }

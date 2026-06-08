@@ -43,6 +43,10 @@ public static class EitherExtensions
             ? Either<L, R>.ToRight(value)
             : Either<L, R>.ToLeft(errorFactory(value)));
 
+    /// <summary>Ensures the Right value satisfies a predicate, with a lazy error factory that ignores the value.</summary>
+    public static Either<L, R> Ensure<L, R>(this Either<L, R> either, Func<R, bool> predicate, Func<L> errorFactory) =>
+        either.Ensure(predicate, _ => errorFactory());
+
     /// <summary>Executes a side-effect action if the state is Right. Returns the value unchanged.</summary>
     public static Either<L, R> Tap<L, R>(this Either<L, R> either, Action<R> action)
     {

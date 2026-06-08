@@ -236,4 +236,28 @@ public class EitherTests
         Assert.True(either is Either<string, Unit>.Left);
         Assert.Equal("operation failed", either.Match(x => x, _ => ""));
     }
+
+    // ── Ensure with Func<L> (no parameter) ────────────────────
+
+    [Fact]
+    public void Ensure_WithFuncErrorFactory_NoParam_ReturnsLeft()
+    {
+        var either = Either<string, int>.ToRight(-1);
+
+        var result = either.Ensure(x => x > 0, () => "must be positive");
+
+        Assert.True(result is Either<string, int>.Left);
+        Assert.Equal("must be positive", result.Match(x => x, _ => ""));
+    }
+
+    [Fact]
+    public void Ensure_WithFuncErrorFactory_NoParam_LeftUnchanged()
+    {
+        var either = Either<string, int>.ToLeft("pre-existing");
+
+        var result = either.Ensure(x => x > 0, () => "never used");
+
+        Assert.True(result is Either<string, int>.Left);
+        Assert.Equal("pre-existing", result.Match(x => x, _ => ""));
+    }
 }

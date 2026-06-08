@@ -60,6 +60,12 @@ public static class EitherAsyncExtensions
                 : Either<L, R>.ToLeft(errorFactory(r))));
 
     /// <summary>
+    /// Ensures the Right value satisfies a predicate, with a lazy error factory that ignores the value.
+    /// </summary>
+    public static EitherAsync<L, R> Ensure<L, R>(this EitherAsync<L, R> asyncEither, Func<R, bool> predicate, Func<L> errorFactory) =>
+        asyncEither.Ensure(predicate, _ => errorFactory());
+
+    /// <summary>
     /// Safely executes an asynchronous operation, catching exceptions into a Left value.
     /// Receives the Right value from the previous step (use <c>_</c> to discard).
     /// </summary>
