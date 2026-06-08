@@ -8,7 +8,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <PackageId>EitherWay</PackageId>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <Authors>Hancer Mercede</Authors>
     <Description>Functional error handling for C#. Railway-oriented programming with the Either monad.</Description>
     <PackageTags>either;functional;railway;monad;error-handling;csharp</PackageTags>
