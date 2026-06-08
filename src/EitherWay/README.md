@@ -269,6 +269,69 @@ Use this when you don't care about the exception details — only that the opera
 
 ---
 
+### 🚨 Static `Try` vs Extension `Try` — clave para entender
+
+Hay **dos familias** de métodos `Try` y es IMPORTANTE distinguirlas:
+
+#### `EitherAsync.Try(...)` → estático, arranca un pipeline
+
+Son métodos **estáticos** en la clase `EitherAsync`. **No reciben** un valor previo — inician el pipeline desde cero.
+
+| Overload | Firma | Handler? |
+|----------|-------|----------|
+| Sin handler | `Try<R>(action)` | ❌ No — la Exception cruda es el Left |
+| Handler | `Try<L,R>(action, handler)` | ✅ `Func<Exception, L>` |
+| Error directo | `Try<L,R>(action, error)` | ❌ No — usás un valor fijo |
+
+```csharp
+// Arranca desde cero — no hay valor previo
+EitherAsync.Try(() => _repo.GetByIdAsync(id))
+```
+
+#### `EitherAsync<L,R>.Try(...)` → extensión, CONTINÚA un pipeline
+
+Son métodos de **extensión** sobre `EitherAsync<L,R>`. **Reciben** el valor Right del paso anterior y **necesitan handler** porque el tipo de error `L` ya está definido.
+
+| Overload | Firma | Handler? |
+|----------|-------|----------|
+| Recibe valor | `Try<L,R,T>(this ..., Func<R,Task<T>>, Func<Exception,L>)` | ✅ Obligatorio |
+| Ignora valor | `Try<L,R,T>(this ..., Func<Task<T>>, Func<Exception,L>)` | ✅ Obligatorio |
+
+```csharp
+// CONTINÚA — recibe el valor del paso anterior
+EitherAsync.Right(companyId)
+    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+```
+
+#### Ejemplo real — CreateUser
+
+```csharp
+return await EitherAsync
+    // ⬇️ Estático: arranca desde cero, NO recibe valor previo
+    //     Puede NO llevar handler porque la Exception cruda es el Left
+    .Try(() => unitOfWork.Users.GetByUsernameAsync(request.Username, ct))
+    .MapLeft(ex => new AppError(ex.Message))
+    .Ensure(user => user is not null, new AppError("username already exists"))
+    .Map(user => request.Project())
+    // ⬇️ Extensión: SÍ recibe el user del Map anterior
+    //     DEBE llevar handler porque el tipo AppError ya está definido
+    .Try(async user =>
+    {
+        user.PasswordHash = passwordHasher.Hash(request.Password);
+        await unitOfWork.Users.AddUserAsync(user, ct);
+        await unitOfWork.CommitAsync(ct);
+        return user;
+    }, exception => new AppError($"Failed to create user: {exception.Message}"))
+    .Map(user => user.MapTo<User, UserDto>())
+    .Run();
+```
+
+**Regla de oro:**
+- Si **arrancás** un pipeline → `EitherAsync.Try(...)` estático (puede o no llevar handler)
+- Si **seguís** un pipeline y la operación puede fallar → `.Try(...)` extensión (SIEMPRE lleva handler)
+
+---
+
 ### Extensions on `Either`
 
 #### `.Map(fn)`
