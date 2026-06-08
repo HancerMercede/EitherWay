@@ -42,7 +42,7 @@ public async Task<Company> GetCompany(int id)
 // After: error-driven
 public EitherAsync<string, Company> GetCompany(int id)
     => EitherAsync.Right(id)
-        .Try(_ => _repo.GetById(id), ex => ex.Message)
+        .FlatMap(_ => _repo.GetById(id), ex => ex.Message)
         .Ensure(c => c != null, "Company not found");
 ```
 
@@ -55,7 +55,7 @@ EitherWay/              ← Core library (no dependencies)
 ├── Either<L, R>       ← Discriminated union: Left (error) / Right (success)
 ├── EitherAsync<L, R>  ← Lazy async: composes without executing until awaited
 ├── Unit                ← Void result for command operations
-├── Fluent extensions   ← Map, FlatMap, Ensure, Try, Tap, MapLeft, BiMap
+├── Fluent extensions   ← Map, FlatMap, Ensure, Tap, MapLeft, BiMap
 ├── LINQ support        ← Select / SelectMany (from...select syntax)
 └── Factories           ← Either.Ok, Either.Fail, EitherAsync.Right, EitherAsync.Left
 
@@ -91,7 +91,7 @@ public EitherAsync<string, Company> CreateCompany(Company company)
     return EitherAsync.Right(company)
         .Ensure(c => !string.IsNullOrEmpty(c.Name), "Name is required")
         .Ensure(c => !string.IsNullOrEmpty(c.Address), "Address is required")
-        .Try(async _ =>
+        .FlatMap(async _ =>
         {
             var db = await _repo.CreateRecord(company);
             await _repo.Save();
@@ -118,7 +118,7 @@ public class CompanyController : ControllerBase
 public EitherAsync<string, Unit> DeleteCompany(int id)
     => EitherAsync.Right(id)
         .Ensure(id => id > 0, "Invalid ID")
-        .Try(_ => _repo.Delete(id), ex => ex.Message);
+        .FlatMap(_ => _repo.Delete(id), ex => ex.Message);
 
 // In controller:
 [HttpDelete("{id}")]
@@ -391,33 +391,23 @@ var result = await EitherAsync.Right(-5)
 // → Left("value -5 is invalid")
 ```
 
-#### `.Try(action, onError)`
+#### `.FlatMap(action, onError)`
 
 Safely executes an async operation as part of a pipeline. The action receives the Right value from the previous step. If it throws, the exception is caught and mapped to a Left. Use `_` as the parameter name when you don't need the incoming value.
 
 ```csharp
 // Receives the previous value
 var result = await EitherAsync.Right(companyId)
-    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+    .FlatMap(async id => await _repo.GetById(id), ex => ex.Message)
     .Run();
 
-// Ignores the previous value
+// Ignores the previous value (use _)
 var result = await EitherAsync.Right(company)
-    .Try(async _ => {
+    .FlatMap(async _ => {
         var db = await _repo.CreateRecord(company);
         await _repo.Save();
         return db;
     }, ex => ex.Message)
-    .Run();
-```
-
-#### `.Try(action, onError)` (overload without input)
-
-Same as above but the action doesn't receive the previous value.
-
-```csharp
-var result = await EitherAsync.Right("ignored")
-    .Try(async () => await _repo.GetCount(), ex => ex.Message)
     .Run();
 ```
 

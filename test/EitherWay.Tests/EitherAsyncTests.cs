@@ -99,15 +99,15 @@ public class EitherAsyncTests
         Assert.Equal(Either<string, int>.ToLeft("must be positive"), result);
     }
 
-    // ── Try ──────────────────────────────────────────────────
+    // ── FlatMap (extension: risky operations) ────────────────
 
     [Fact]
-    public async Task Try_OnRight_Success()
+    public async Task FlatMap_Extension_OnRight_Success()
     {
         var asyncEither = EitherAsync.Right(42);
 
         var result = await asyncEither
-            .Try(x => Task.FromResult(x.ToString()), ex => ex.Message)
+            .FlatMap(x => Task.FromResult(x.ToString()), ex => ex.Message)
             .Run();
 
         Assert.True(result is Either<string, string>.Right);
@@ -115,12 +115,12 @@ public class EitherAsyncTests
     }
 
     [Fact]
-    public async Task Try_OnRight_WithDiscard()
+    public async Task FlatMap_Extension_OnRight_WithDiscard()
     {
         var asyncEither = EitherAsync.Right("ignored");
 
         var result = await asyncEither
-            .Try(_ => Task.FromResult(42), ex => ex.Message)
+            .FlatMap(_ => Task.FromResult(42), ex => ex.Message)
             .Run();
 
         Assert.True(result is Either<string, int>.Right);
@@ -128,12 +128,12 @@ public class EitherAsyncTests
     }
 
     [Fact]
-    public async Task Try_OnLeft_DoesNotExecute()
+    public async Task FlatMap_Extension_OnLeft_DoesNotExecute()
     {
         var asyncEither = EitherAsync.Left<int>("pre-existing error");
 
         var result = await asyncEither
-            .Try(x => Task.FromResult("never"), ex => ex.Message)
+            .FlatMap(x => Task.FromResult("never"), ex => ex.Message)
             .Run();
 
         Assert.True(result is Either<string, string>.Left);

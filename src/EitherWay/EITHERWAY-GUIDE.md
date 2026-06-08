@@ -255,22 +255,22 @@ await asyncOp.FlatMap(x => Task.FromResult(Either<string, string>.ToRight($"valu
 await asyncOp.FlatMap(x => Either<string, string>.ToRight($"value: {x}")).Run();
 ```
 
-### `.Try(action, onError)` — Extension (continue a pipeline)
+### `.FlatMap(action, onError)` — Extension (continue a pipeline)
 
 Safely executes an async operation as part of a pipeline. The action receives the Right value from the previous step. **Must** include a handler because the error type `L` is already defined.
 
 ```csharp
 // Receives the previous value
 var result = await EitherAsync.Right(companyId)
-    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+    .FlatMap(async id => await _repo.GetById(id), ex => ex.Message)
     .Run();
 ```
 
-### 🚨 Static `Try` vs Extension `Try` — clave para entender
+### 🚨 Static `Try` vs Extension `FlatMap` — cómo distinguirlos
 
-Hay **dos familias** de métodos `Try` y es IMPORTANTE distinguirlas:
+Son **dos métodos distintos** con propósitos diferentes:
 
-| Característica | `EitherAsync.Try()` (estático) | `.Try()` (extensión) |
+| Característica | `EitherAsync.Try()` (estático) | `.FlatMap()` (extensión) |
 |---|---|---|
 | **Rol** | Arranca un pipeline desde cero | Continúa un pipeline existente |
 | **Recibe valor previo?** | ❌ No | ✅ Sí |
@@ -286,8 +286,8 @@ return await EitherAsync
     .MapLeft(ex => new AppError(ex.Message))
     .Ensure(user => user is not null, new AppError("username already exists"))
     .Map(user => request.Project())
-    // ⬇️ Extensión: recibe el user, DEBE llevar handler
-    .Try(async user =>
+    // ⬇️ Extensión FlatMap: recibe el user, DEBE llevar handler
+    .FlatMap(async user =>
     {
         user.PasswordHash = passwordHasher.Hash(request.Password);
         await unitOfWork.Users.AddUserAsync(user, ct);
@@ -384,12 +384,12 @@ var result = await EitherAsync
 
 **Cons:** Requires chaining `MapLeft` even for simple cases.
 
-### Option 2: `Try(action, handler)` — inline error mapping
+### Option 2: `FlatMap(action, handler)` — inline error mapping
 
 ```csharp
 public EitherAsync<string, Company> GetCompanyV2(int id)
     => EitherAsync.Right(id)
-        .Try(_ => _repo.GetById(id), ex => ex.Message)
+        .FlatMap(_ => _repo.GetById(id), ex => ex.Message)
         .Ensure(c => c != null, "Company not found");
 ```
 
@@ -581,7 +581,7 @@ public async Task<ActionResult<Company>> Get(int id)
 - **`Either`**: when you have the value right now (sync computation, validation, transformation).
 - **`EitherAsync`**: when the value comes from an async source (database, HTTP request, file read).
 
-If you have an `EitherAsync` but need to call a sync function, use `.Map()`. If you have an `Either` but need an `EitherAsync`, use `EitherAsync.FromEither()`.
+If you have an `EitherAsync` but need to call a sync function, use `.Map()`. If you have an `Either` but need an `EitherAsync`, create one with `EitherAsync<L,R>.FromRight(value)` or use the static `Try` with a pre-resolved value.
 
 ### What's the difference between the three `Ensure` overloads?
 
@@ -598,20 +598,28 @@ Ensure(x => x > 0, () => "must be positive")
 
 Use #1 when possible — it's the most concise. Use #2 when the error message includes the value. Use #3 when the error is expensive to create.
 
-### What's the difference between `Try` (static) and `Try` (extension)?
+### What's the difference between `EitherAsync.Try()` (static) and `.FlatMap()` (extension)?
 
-The **static** `Try` starts a pipeline from scratch. The **extension** `Try` continues an existing pipeline and receives the previous value. See the [comparison section](#-static-try-vs-extension-try--clave).
+The **static** `Try` starts a pipeline from scratch. The **extension** `FlatMap` continues an existing pipeline and receives the previous value. See the [comparison section](#-static-try-vs-extension-flatmap--cómo-distinguirlos).
 
 ### Can I mix error types in a pipeline?
 
+**No.** C# does not support union types. Once `L` is set (e.g. `string`), all subsequent `Ensure`, `MapLeft`, and `FlatMap` calls must use the **same type**. If you need a different error type, convert it with `.MapLeft()` earlier in the chain.
+
 ```csharp
+// ✅ Correct: MapLeft projects the error type before Ensure
 var result = await EitherAsync
     .Try(() => repo.GetByIdAsync(id), ex => ex.Message)  // L = string
-    .Ensure(u => u != null, new AppError("not found"))    // L = string | AppError
+    .MapLeft(msg => new AppError(msg))                    // L = AppError
+    .Ensure(u => u != null, new AppError("not found"))    // L = AppError ✓
+    .Run();
+
+// ❌ Wrong: Ensure uses AppError while L is still string
+var result = await EitherAsync
+    .Try(() => repo.GetByIdAsync(id), ex => ex.Message)  // L = string
+    .Ensure(u => u != null, new AppError("not found"))    // ❌ compile error
     .Run();
 ```
-
-Yes! The `L` type accumulates via union. The final type is `Either<string | AppError, User>`.
 
 ### Does the library have any dependencies?
 
@@ -627,7 +635,7 @@ Zero runtime dependencies. It includes a `FrameworkReference` to `Microsoft.AspN
 |--------|---------|-------------|
 | `Either.Ok(value)` | `Either<string, T>` | Success (L = string) |
 | `Either.Fail<T>(error)` | `Either<string, T>` | Error (L = string) |
-| `Either<R>.ToRight(value)` | `Either<L, R>` | Success with explicit types |
+| `Either<L, R>.ToRight(value)` | `Either<L, R>` | Success with explicit types |
 | `Either<L, R>.ToLeft(error)` | `Either<L, R>` | Error with explicit types |
 | `EitherAsync.Right(value)` | `EitherAsync<string, T>` | Async success |
 | `EitherAsync.Left<T>(error)` | `EitherAsync<string, T>` | Async error |
@@ -660,7 +668,7 @@ Zero runtime dependencies. It includes a `FrameworkReference` to `Microsoft.AspN
 |--------|---------|-------------|
 | `Map(fn)` | `EitherAsync<L, T>` | Transform Right |
 | `FlatMap(fn)` | `EitherAsync<L, T>` | Chain Either-returning fn |
-| `Try(action, handler)` | `EitherAsync<L, T>` | Continue with exception safety |
+| `FlatMap(action, handler)` | `EitherAsync<L, T>` | Continue with exception safety |
 | `MapLeft(fn)` | `EitherAsync<T, R>` | Transform Left |
 | `BiMap(left, right)` | `EitherAsync<T, U>` | Map both sides |
 | `Ensure(predicate, error)` | `EitherAsync<L, R>` | Guard clause |

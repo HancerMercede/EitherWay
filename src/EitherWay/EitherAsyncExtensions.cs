@@ -9,10 +9,6 @@ public static class EitherAsyncExtensions
     public static EitherAsync<L, T> Map<L, R, T>(this EitherAsync<L, R> asyncEither, Func<R, T> map) =>
         asyncEither.FlatMap(r => Task.FromResult(Either<L, T>.ToRight(map(r))));
 
-    /// <summary>Chains an asynchronous function that returns an Either.</summary>
-    public static EitherAsync<L, T> FlatMap<L, R, T>(this EitherAsync<L, R> asyncEither, Func<R, Task<Either<L, T>>> map) =>
-        asyncEither.FlatMap(map);
-
     /// <summary>Chains a synchronous function that returns an Either.</summary>
     public static EitherAsync<L, T> FlatMap<L, R, T>(this EitherAsync<L, R> asyncEither, Func<R, Either<L, T>> map) =>
         asyncEither.FlatMap(r => Task.FromResult(map(r)));
@@ -69,7 +65,7 @@ public static class EitherAsyncExtensions
     /// Safely executes an asynchronous operation, catching exceptions into a Left value.
     /// Receives the Right value from the previous step (use <c>_</c> to discard).
     /// </summary>
-    public static EitherAsync<L, T> Try<L, R, T>(this EitherAsync<L, R> asyncEither, Func<R, Task<T>> action, Func<Exception, L> errorHandler)
+    public static EitherAsync<L, T> FlatMap<L, R, T>(this EitherAsync<L, R> asyncEither, Func<R, Task<T>> action, Func<Exception, L> errorHandler)
     {
         return new EitherAsync<L, T>(async () =>
         {
@@ -90,12 +86,6 @@ public static class EitherAsyncExtensions
                 });
         });
     }
-
-    /// <summary>
-    /// Safely executes an asynchronous operation without using the previous value.
-    /// </summary>
-    public static EitherAsync<L, T> Try<L, R, T>(this EitherAsync<L, R> asyncEither, Func<Task<T>> action, Func<Exception, L> errorHandler) =>
-        asyncEither.Try(_ => action(), errorHandler);
 
     /// <summary>Executes a side-effect action if the state is Right. Returns the original value unchanged.</summary>
     public static EitherAsync<L, R> Tap<L, R>(this EitherAsync<L, R> asyncEither, Action<R> action)

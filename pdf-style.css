@@ -1,31 +1,67 @@
 @page {
-  margin: 2.5cm 2cm 2.5cm 2cm;
+  margin: 2.2cm 2cm 2.8cm 2cm;
   size: A4;
+
+  @bottom-center {
+    content: counter(page);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 9pt;
+    color: #90a4ae;
+  }
+
+  @top-right {
+    content: "EitherWay";
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 8pt;
+    color: #b0bec5;
+    font-style: italic;
+  }
+}
+
+@page:first {
+  @bottom-center { content: none; }
+  @top-right { content: none; }
 }
 
 body {
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  font-size: 11pt;
-  line-height: 1.6;
+  font-size: 10.5pt;
+  line-height: 1.65;
   color: #1a1a1a;
   max-width: 100%;
+  counter-reset: h2-counter;
 }
 
-/* Cover page */
+/* ── Cover page ────────────────────────────────────────────── */
 h1:first-of-type {
   text-align: center;
-  font-size: 28pt;
-  margin-top: 4cm;
-  margin-bottom: 0.3cm;
+  font-size: 30pt;
+  margin-top: 3.5cm;
+  margin-bottom: 0.2cm;
   color: #0d47a1;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  border-bottom: none;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+
+h1:first-of-type::after {
+  content: "";
+  display: block;
+  width: 6cm;
+  height: 3px;
+  background: linear-gradient(to right, #0d47a1, #64b5f6);
+  margin: 0.6cm auto 0;
+  border-radius: 2px;
 }
 
 h1:first-of-type + p {
   text-align: center;
-  font-size: 14pt;
-  color: #555;
-  margin-bottom: 2cm;
+  font-size: 13pt;
+  color: #546e7a;
+  margin-bottom: 0.5cm;
+  font-style: italic;
 }
 
 h1:first-of-type + p + hr {
@@ -34,163 +70,280 @@ h1:first-of-type + p + hr {
 
 h1:first-of-type + p + hr + p {
   text-align: center;
-  font-size: 11pt;
-  color: #888;
-  margin-top: -1cm;
+  font-size: 10pt;
+  color: #90a4ae;
+  margin-top: -0.3cm;
 }
 
-/* Headings */
+/* ── Table of Contents ─────────────────────────────────────── */
+/* First h2 after cover is the TOC */
+h1:first-of-type ~ h2:first-of-type {
+  text-align: center;
+  font-size: 18pt;
+  color: #0d47a1;
+  border-bottom: 2px solid #0d47a1;
+  padding-bottom: 8px;
+  margin-top: 1.5cm;
+  page-break-before: always;
+  page-break-after: avoid;
+}
+
+/* Style TOC links as a clean list */
+h1:first-of-type ~ h2:first-of-type ~ p a {
+  display: block;
+  padding: 4px 0;
+  font-size: 11pt;
+  color: #1565c0;
+  text-decoration: none;
+  border-bottom: 1px dotted #e0e3e8;
+  transition: none;
+}
+
+h1:first-of-type ~ h2:first-of-type ~ p a:hover {
+  color: #0d47a1;
+  font-weight: 600;
+}
+
+/* ── Headings ──────────────────────────────────────────────── */
 h1 {
   font-size: 20pt;
   color: #0d47a1;
-  border-bottom: 2px solid #0d47a1;
-  padding-bottom: 4px;
-  margin-top: 1.5cm;
+  border-bottom: 2.5px solid #0d47a1;
+  padding-bottom: 5px;
+  margin-top: 1.8cm;
+  margin-bottom: 0.6cm;
   page-break-before: always;
+  page-break-after: avoid;
+  font-weight: 700;
+}
+
+h1:first-of-type {
+  page-break-before: avoid;
+  border-bottom: none;
+  margin-top: 3.5cm;
 }
 
 h2 {
-  font-size: 16pt;
+  font-size: 15.5pt;
   color: #1565c0;
-  margin-top: 1cm;
-  margin-bottom: 0.3cm;
+  margin-top: 1.2cm;
+  margin-bottom: 0.4cm;
   page-break-after: avoid;
+  font-weight: 600;
+  border-bottom: 1px solid #e3f2fd;
+  padding-bottom: 3px;
 }
 
 h3 {
-  font-size: 13pt;
+  font-size: 12.5pt;
   color: #1976d2;
-  margin-top: 0.7cm;
-  margin-bottom: 0.2cm;
+  margin-top: 0.8cm;
+  margin-bottom: 0.3cm;
   page-break-after: avoid;
+  font-weight: 600;
 }
 
 h4 {
   font-size: 11pt;
   color: #1e88e5;
   margin-top: 0.5cm;
-  margin-bottom: 0.1cm;
+  margin-bottom: 0.2cm;
   page-break-after: avoid;
+  font-weight: 600;
 }
 
-/* Code blocks */
+/* ── Code blocks ───────────────────────────────────────────── */
 code {
-  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
-  font-size: 9.5pt;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", "JetBrains Mono", monospace;
+  font-size: 9pt;
 }
 
 pre {
-  background-color: #f5f7fa;
-  border: 1px solid #e0e3e8;
+  background: linear-gradient(to bottom, #f8f9fb, #f0f2f5);
+  border: 1px solid #dde3ea;
   border-left: 4px solid #1565c0;
-  border-radius: 4px;
-  padding: 12px 16px;
+  border-radius: 5px;
+  padding: 14px 18px;
   overflow-x: auto;
-  line-height: 1.4;
+  line-height: 1.45;
   page-break-inside: avoid;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin: 0.5cm 0;
 }
 
 pre code {
   background: none;
   padding: 0;
-  font-size: 9pt;
+  font-size: 8.5pt;
+  color: #263238;
 }
 
 p code, li code {
-  background-color: #eef2f8;
-  padding: 2px 6px;
+  background-color: #e3f2fd;
+  padding: 2px 7px;
   border-radius: 3px;
-  font-size: 9.5pt;
+  font-size: 9pt;
+  color: #0d47a1;
 }
 
-/* Tables */
+/* ── Tables ────────────────────────────────────────────────── */
 table {
   width: 100%;
-  border-collapse: collapse;
-  margin: 0.8cm 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0.6cm 0;
   page-break-inside: avoid;
-  font-size: 10pt;
+  font-size: 9.5pt;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 th {
-  background-color: #1565c0;
+  background: linear-gradient(to bottom, #1565c0, #0d47a1);
   color: white;
   text-align: left;
-  padding: 8px 12px;
+  padding: 9px 14px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 td {
-  padding: 6px 12px;
-  border-bottom: 1px solid #e0e3e8;
+  padding: 7px 14px;
+  border-bottom: 1px solid #e8ecf0;
+}
+
+tr:last-child td {
+  border-bottom: none;
 }
 
 tr:nth-child(even) td {
-  background-color: #f8f9fb;
+  background-color: #f7f9fc;
 }
 
-/* Blockquotes - for tips/warnings */
+tr:hover td {
+  background-color: #eef3fa;
+}
+
+/* ── Blockquotes - tips, warnings, info ────────────────────── */
 blockquote {
   border-left: 4px solid #ffa726;
-  background: #fff8e1;
-  padding: 10px 16px;
+  background: linear-gradient(to right, #fff8e1, #fffdf5);
+  padding: 12px 18px;
   margin: 0.5cm 0;
   page-break-inside: avoid;
+  border-radius: 0 5px 5px 0;
 }
 
 blockquote p {
   margin: 0;
+  color: #5d4037;
 }
 
-blockquote:has(strong:contains("⚠")) {
+/* Warning blockquote — starts with ⚠ */
+blockquote:has(strong:nth-child(1)) {
   border-left-color: #e53935;
-  background: #ffebee;
+  background: linear-gradient(to right, #ffebee, #fff5f5);
 }
 
-blockquote:has(strong:contains("💡")) {
+/* Info/tip blockquote — starts with 💡 */
+blockquote:has(strong:nth-child(1)) {
   border-left-color: #43a047;
-  background: #e8f5e9;
+  background: linear-gradient(to right, #e8f5e9, #f1faf1);
 }
 
-/* Lists */
+/* Distinguish warning vs tip by first strong text */
+blockquote strong:first-child {
+  display: inline;
+}
+
+/* ── Lists ─────────────────────────────────────────────────── */
 ul, ol {
   margin: 0.3cm 0;
-  padding-left: 1.2cm;
+  padding-left: 1.1cm;
 }
 
 li {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  line-height: 1.55;
 }
 
-/* Horizontal rule */
+ul li::marker {
+  color: #1565c0;
+}
+
+ol li::marker {
+  color: #1565c0;
+  font-weight: 600;
+}
+
+/* ── Horizontal rules ──────────────────────────────────────── */
 hr {
   border: none;
   height: 1px;
-  background: #e0e3e8;
-  margin: 0.6cm 0;
+  background: linear-gradient(to right, transparent, #b0bec5, transparent);
+  margin: 0.8cm 0;
 }
 
-/* Links */
+/* ── Links ─────────────────────────────────────────────────── */
 a {
   color: #1565c0;
   text-decoration: none;
+  border-bottom: 1px dotted #90caf9;
 }
 
 a:hover {
-  text-decoration: underline;
+  border-bottom: 1px solid #1565c0;
 }
 
-/* Strong emphasis */
+/* ── Emphasis ──────────────────────────────────────────────── */
 strong {
   color: #0d47a1;
+  font-weight: 700;
 }
 
-/* Captions for the cover */
-h1:first-of-type + p + hr + p {
-  margin-top: 0;
+em {
+  color: #37474f;
 }
 
-/* Avoid page breaks in bad places */
+/* ── Inline code in headings ───────────────────────────────── */
+h1 code, h2 code, h3 code, h4 code {
+  font-size: inherit;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* ── Definition / description lists ────────────────────────── */
+p + blockquote {
+  margin-top: -0.2cm;
+}
+
+/* ── Avoid page breaks in bad places ───────────────────────── */
 h2 + p, h3 + p, h2 + pre, h3 + pre {
   page-break-before: avoid;
 }
+
+h1 + h2, h2 + h3 {
+  margin-top: 0.6cm;
+}
+
+/* ── Print-specific ────────────────────────────────────────── */
+@media print {
+  body {
+    font-size: 10pt;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  a {
+    border-bottom: none;
+  }
+}
+
+/* ── Emoji fallback ────────────────────────────────────────── */
+/* If emoji aren't rendered, show text alternatives via
+   CSS content won't work, so we rely on the source markdown */

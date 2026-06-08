@@ -47,11 +47,7 @@ public static class EitherLinqExtensions
         });
     }
 
-    /// <summary>LINQ Where — filters the Right value, switching to Left if the predicate fails.</summary>
-    public static EitherAsync<L, R> Where<L, R>(this EitherAsync<L, R> asyncEither, Func<R, bool> predicate, L error) =>
-        asyncEither.Ensure(predicate, error);
-
-    /// <summary>LINQ Where on Either — filters the Right value.</summary>
-    public static Either<L, R> Where<L, R>(this Either<L, R> either, Func<R, bool> predicate, L error) =>
-        either.Ensure(predicate, error);
+    // Note: Where is deliberately omitted because query comprehension syntax
+    // provides only the predicate (Func<R, bool>) — there's nowhere to pass the
+    // error value. Use .Ensure(predicate, error) in method chains instead.
 }

@@ -89,7 +89,9 @@ public record EitherAsync<L, R>(Func<Task<Either<L, R>>> Run)
     /// Safely executes an asynchronous task, catching exceptions into a Left value.
     /// The error is used directly if an exception occurs — you don't need a handler.
     /// </summary>
+#pragma warning disable CS0693
     public static EitherAsync<L, R> Try<L, R>(Func<Task<R>> action, L error)
+#pragma warning restore CS0693
     {
         return new EitherAsync<L, R>(async () =>
         {

@@ -49,10 +49,10 @@ public async Task<Either<string, Company>> GetCompany(int id)
         .Ensure(c => c != null, "Company not found")
         .Run();
 
-// Option 2: extension Try with handler (no MapLeft needed)
+// Option 2: extension FlatMap with handler (no MapLeft needed)
 public EitherAsync<string, Company> GetCompanyV2(int id)
     => EitherAsync.Right(id)
-        .Try(_ => _repo.GetById(id), ex => ex.Message)
+        .FlatMap(_ => _repo.GetById(id), ex => ex.Message)
         .Ensure(c => c != null, "Company not found");
 
 // Option 3: static Try with direct error value (cleanest when you don't need the exception)
@@ -72,7 +72,7 @@ EitherWay/              ← Core library (no dependencies)
 ├── Either<L, R>       ← Discriminated union: Left (error) / Right (success)
 ├── EitherAsync<L, R>  ← Lazy async: composes without executing until awaited
 ├── Unit                ← Void result for command operations
-├── Fluent extensions   ← Map, FlatMap, Ensure, Try, Tap, MapLeft, BiMap
+├── Fluent extensions   ← Map, FlatMap, Ensure, Tap, MapLeft, BiMap
 ├── LINQ support        ← Select / SelectMany (from...select syntax)
 └── Factories           ← Either.Ok, Either.Fail, EitherAsync.Right, EitherAsync.Left
 
@@ -108,7 +108,7 @@ public EitherAsync<string, Company> CreateCompany(Company company)
     return EitherAsync.Right(company)
         .Ensure(c => !string.IsNullOrEmpty(c.Name), "Name is required")
         .Ensure(c => !string.IsNullOrEmpty(c.Address), "Address is required")
-        .Try(async _ =>
+        .FlatMap(async _ =>
         {
             var db = await _repo.CreateRecord(company);
             await _repo.Save();
@@ -135,7 +135,7 @@ public class CompanyController : ControllerBase
 public EitherAsync<string, Unit> DeleteCompany(int id)
     => EitherAsync.Right(id)
         .Ensure(id => id > 0, "Invalid ID")
-        .Try(_ => _repo.Delete(id), ex => ex.Message);
+        .FlatMap(_ => _repo.Delete(id), ex => ex.Message);
 
 // In controller:
 [HttpDelete("{id}")]
@@ -269,13 +269,13 @@ Use this when you don't care about the exception details — only that the opera
 
 ---
 
-### 🚨 Static `Try` vs Extension `Try` — clave para entender
+### 🚨 Static `Try` vs Extension `FlatMap` — cómo distinguirlos
 
-Hay **dos familias** de métodos `Try` y es IMPORTANTE distinguirlas:
+Son **dos métodos distintos** con propósitos diferentes:
 
 #### `EitherAsync.Try(...)` → estático, arranca un pipeline
 
-Son métodos **estáticos** en la clase `EitherAsync`. **No reciben** un valor previo — inician el pipeline desde cero.
+Son métodos **estáticos** en la clase `EitherAsync`. **No reciben** un valor previo — inician el pipeline desde cero. El tipo error `L` se define acá.
 
 | Overload | Firma | Handler? |
 |----------|-------|----------|
@@ -288,19 +288,18 @@ Son métodos **estáticos** en la clase `EitherAsync`. **No reciben** un valor p
 EitherAsync.Try(() => _repo.GetByIdAsync(id))
 ```
 
-#### `EitherAsync<L,R>.Try(...)` → extensión, CONTINÚA un pipeline
+#### `.FlatMap(action, handler)` → extensión, CONTINÚA un pipeline
 
-Son métodos de **extensión** sobre `EitherAsync<L,R>`. **Reciben** el valor Right del paso anterior y **necesitan handler** porque el tipo de error `L` ya está definido.
+Es un método de **extensión** sobre `EitherAsync<L,R>`. **Recibe** el valor Right del paso anterior. **Siempre lleva handler** porque el tipo de error `L` ya está definido.
 
-| Overload | Firma | Handler? |
-|----------|-------|----------|
-| Recibe valor | `Try<L,R,T>(this ..., Func<R,Task<T>>, Func<Exception,L>)` | ✅ Obligatorio |
-| Ignora valor | `Try<L,R,T>(this ..., Func<Task<T>>, Func<Exception,L>)` | ✅ Obligatorio |
+| Firma | Handler? |
+|-------|----------|
+| `FlatMap<L,R,T>(this ..., Func<R,Task<T>>, Func<Exception,L>)` | ✅ Obligatorio |
 
 ```csharp
 // CONTINÚA — recibe el valor del paso anterior
 EitherAsync.Right(companyId)
-    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+    .FlatMap(async id => await _repo.GetById(id), ex => ex.Message)
 ```
 
 #### Ejemplo real — CreateUser
@@ -313,9 +312,9 @@ return await EitherAsync
     .MapLeft(ex => new AppError(ex.Message))
     .Ensure(user => user is not null, new AppError("username already exists"))
     .Map(user => request.Project())
-    // ⬇️ Extensión: SÍ recibe el user del Map anterior
+    // ⬇️ Extensión FlatMap: SÍ recibe el user del Map anterior
     //     DEBE llevar handler porque el tipo AppError ya está definido
-    .Try(async user =>
+    .FlatMap(async user =>
     {
         user.PasswordHash = passwordHasher.Hash(request.Password);
         await unitOfWork.Users.AddUserAsync(user, ct);
@@ -328,7 +327,7 @@ return await EitherAsync
 
 **Regla de oro:**
 - Si **arrancás** un pipeline → `EitherAsync.Try(...)` estático (puede o no llevar handler)
-- Si **seguís** un pipeline y la operación puede fallar → `.Try(...)` extensión (SIEMPRE lleva handler)
+- Si **seguís** un pipeline y la operación puede fallar → `.FlatMap(action, handler)` extensión (SIEMPRE lleva handler)
 
 ---
 
@@ -516,33 +515,23 @@ var result = await EitherAsync.Right(-5)
 // → Left("must be positive")
 ```
 
-#### `.Try(action, onError)`
+#### `.FlatMap(action, onError)`
 
 Safely executes an async operation as part of a pipeline. The action receives the Right value from the previous step. If it throws, the exception is caught and mapped to a Left. Use `_` as the parameter name when you don't need the incoming value.
 
 ```csharp
 // Receives the previous value
 var result = await EitherAsync.Right(companyId)
-    .Try(async id => await _repo.GetById(id), ex => ex.Message)
+    .FlatMap(async id => await _repo.GetById(id), ex => ex.Message)
     .Run();
 
-// Ignores the previous value
+// Ignores the previous value (use _)
 var result = await EitherAsync.Right(company)
-    .Try(async _ => {
+    .FlatMap(async _ => {
         var db = await _repo.CreateRecord(company);
         await _repo.Save();
         return db;
     }, ex => ex.Message)
-    .Run();
-```
-
-#### `.Try(action, onError)` (overload without input)
-
-Same as above but the action doesn't receive the previous value.
-
-```csharp
-var result = await EitherAsync.Right("ignored")
-    .Try(async () => await _repo.GetCount(), ex => ex.Message)
     .Run();
 ```
 
@@ -663,23 +652,7 @@ var result = from a in Either<string, int>.ToRight(3)
 // → Left("fail") — second from fails, select is skipped
 ```
 
-#### `Where`
-
-Filters the Right value. If the predicate fails, the Either switches to Left with the provided error.
-
-```csharp
-var result = from x in Either<string, int>.ToRight(5)
-             where x > 10  // needs explicit error
-             select x;
-```
-
-Note: `Where` on Either/EitherAsync requires an explicit error value (unlike LINQ to Objects) because there's no default error to use when the predicate fails.
-
-```csharp
-var result = from x in Either<string, int>.ToRight(5)
-             where x > 10 select "too small"
-             select x;
-```
+> **Note:** `from...where...select` query syntax is **not supported** because the LINQ `Where` pattern only provides the predicate — there's nowhere to pass the error value. Use `.Ensure(predicate, error)` in method chains instead. It's clearer and works the same way.
 
 ---
 
